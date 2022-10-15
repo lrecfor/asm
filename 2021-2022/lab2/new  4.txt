@@ -1,0 +1,69 @@
+_print_matr1:	;вывод первой матрицы
+	mov ax, word ptr[bx]
+    call _print_ax
+	add bx, 2
+	inc di
+	cmp di, 9
+	jz _matr1_ex
+	jmp _print_matr1
+
+_tmp1: jmp _tmp
+
+_matr1_ex:
+	call _putnewline
+	mov ax, word ptr[n1]
+	call _print_ax
+	mov ax, word ptr[m1]
+	call _print_ax
+	
+	call _putnewline
+	call _putnewline
+	mov bx, offset matr2
+	xor di, di
+	
+_print_matr2:	;вывод второй матрицы
+	mov ax, word ptr es:[bx]
+    call _print_ax
+	add bx, 2
+	inc di
+	cmp di, 12
+	jz _matr2_ex
+	jmp _print_matr2
+	
+_matr2_ex:
+	call _putnewline
+	mov ax, word ptr es:[n2]
+	call _print_ax
+	mov ax, word ptr es:[m2]
+	call _print_ax
+	
+	call _putnewline
+	call _putnewline	
+	
+	
+	
+	
+	////
+	;mov dx, 256
+    ;push dx
+    ;mov dx, offset fname1 ;get filename 1
+    ;push dx
+    ;call _getstr
+    ;add sp, 4
+	
+	;mov dx, 256
+    ;push dx
+    ;mov dx, offset fname2 ;get filename 2
+    ;push dx
+	;mov dx, 'es'
+	;push dx
+    ;call _getstr_seg
+    ;add sp, 4
+	
+	;mov dx, 256
+    ;push dx
+    ;mov dx, word ptr[bp+var2] ;get filename 3
+    ;push dx
+    ;call _getstr
+    ;add sp, 4
+	

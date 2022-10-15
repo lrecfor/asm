@@ -1,0 +1,2 @@
+1. Дополнить файл files.inc функцией копирования файла fcopy(file_desc in, file_desc out).
+2. Дополнить файл files.inc функцией добавления содержимого файла in в конец файла out fadd(file_desc in, file_desc out).

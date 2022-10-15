@@ -1,0 +1,9 @@
+Реализовать на языке ассемблера стандартные функции работы со строками и дополнить файл 
+strings.inc этими функциями (по 0,5 балла за функцию, при реализации всех функций ещё +0,5 балла):
+///char * strstr (const char *str, const char *strSearch)  ;поиск первого вхождение строки strSearch в строке str, 
+;возвращает 0 если нет вхождений, иначе указатель на первое вхождение, если strSearch нулевой длины, то возвращ указ на начало строки str
+///char * strcpy (char *dst, const char *src) ;копирует строку srd в строку dest, копирование вместе с \0, возвращает указатель на dest 
+///char * strcat (char *dst, const char *src) ;конкатенация, \0, возвращает указатель на dest 
+///int strcmp (const char *string1, const char *string2) ;сравнение строк, возвращает <0 string1<string2, =0 string1=string2, >0 string1>string2
+///char * strchr (const char *str, int c) ;поиск первого вхождения с в строку str, возвращает указатель на символ, если не найден 0
+
