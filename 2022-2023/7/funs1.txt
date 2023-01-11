@@ -1,0 +1,456 @@
+.686
+.model flat, stdcall
+option casemap:none
+
+include c:\masm32\include\msvcrt.inc
+include c:\masm32\include\kernel32.inc
+include c:\masm32\include\user32.inc
+
+include Strings.mac
+
+string struct
+	str_length	dd ?
+	str_ptr		dd ?
+string ends
+
+.data
+
+
+.data?
+
+.const
+format_s db "%s",13,10,0
+format_d db "%d", 0Dh, 0Ah, 0
+format_c db "%c", 0Dh, 0Ah, 0
+format_r db "r", 0
+format_w db "w", 0
+format_a db "a", 0
+
+.code
+
+printf proto c :dword, :vararg
+malloc proto c :dword
+free proto c:dword
+rand proto c
+
+;char * strcpy (char *dst, const char *src) 
+;копирует строку src в строку dest, копирование вместе с \0, возвращает указатель на dest 
+_strcpy proc c uses ebx ecx pdst:dword, psrc:dword
+	mov ecx, [psrc]
+	mov ebx, [pdst] 
+	
+strcpy_cyc:    
+	mov	dl, byte ptr[ecx]
+	mov byte ptr[ebx], dl
+	
+	cmp	byte ptr[ecx], 0
+	je strcpy_ret
+	
+	inc ecx
+	inc ebx
+	jmp	strcpy_cyc
+	
+strcpy_ret:
+	mov eax, [pdst]
+    ret
+_strcpy endp
+
+;/////////////////////////////////////////////////////////////////////////////////
+;char * strstr (const char *str, const char *strSearch);
+;поиск первого вхождение строки strSearch в строке str, возвращает 0 если нет вхождений, 
+;иначе указатель на первое вхождение, если strSearch нулевой длины, то возвращ указ на начало строки str
+str_str proc c uses ebx ecx pstr1:ptr string, pstr2:ptr string
+	local count:dword
+	mov ebx, pstr1
+	mov ebx, [ebx].string.str_ptr
+	mov ecx, pstr2
+	mov ecx, [ecx].string.str_ptr
+
+    mov [count], 0
+    
+	.while 1
+		mov dl, byte ptr[ebx]
+		mov al, byte ptr[ecx]
+
+		.if dl == 0
+			.if al == 0
+				sub ebx, [count]
+				mov eax, ebx
+				ret
+			.else 
+				mov eax, 0
+			.endif
+			ret
+		.endif
+
+		.if al == 0
+			@_:
+			sub ebx, [count]
+			mov eax, ebx
+			ret
+		.endif
+
+		cmp dl, al
+		je str_str_count
+
+		inc ebx
+		jmp @
+
+		str_str_count:
+			inc ebx
+			inc ecx
+			inc [count]
+
+		@:
+    .endw
+	ret
+str_str endp
+
+
+;; char * strcpy (char *dst, const char *src) 
+;; копирует src в dest, копирование вместе с \0, возвращает указатель на dest 
+str_cpy proc c uses ebx ecx pdst:ptr string, psrc:ptr string
+	mov ecx, [psrc]
+	mov ebx, [pdst]
+	mov ecx, [ecx].string.str_ptr
+	mov ebx, [ebx].string.str_ptr
+	
+str_cpy_cyc:    
+	mov	dl, byte ptr[ecx]
+	mov byte ptr[ebx], dl
+	
+	cmp	byte ptr[ecx], 0
+	je str_cpy_ret
+	
+	inc ecx
+	inc ebx
+	jmp	str_cpy_cyc
+	
+str_cpy_ret:
+	inc ebx
+	mov byte ptr[ebx], 0
+	mov eax, [pdst]
+	ret
+str_cpy endp
+
+
+;; int strlen(const char *str)
+;; находит длинну строки (до завершающего нуля), адрес которой является аргументом
+str_len proc c uses ebx pstr:ptr string
+	mov ebx, [pstr]
+	mov ebx, [ebx].string.str_ptr
+	mov eax, 0
+str_len_cycle:   
+	cmp byte ptr [ebx], 0
+    je str_len_ret
+
+	inc ebx
+	inc eax
+	
+    jmp str_len_cycle
+    
+str_len_ret:
+	ret
+str_len endp
+
+;;char * strcat (char *dst, const char *src) 
+;;конкатенация, возвращает указатель на dest
+str_cat proc c uses ebx ecx pdst:ptr string, psrc:ptr string
+	local buf:dword
+	local tmp:dword
+
+	mov ebx, [pdst]
+	mov ebx, [ebx].string.str_length
+
+	invoke str_len, [pdst]
+	mov ecx, eax
+	mov [tmp], ecx
+	invoke str_len, [psrc]
+	add eax, ecx
+
+	.if eax > ebx
+		mov [ebx].string.str_length, eax
+		invoke malloc, eax
+		mov [buf], eax
+		mov ebx, [pdst]
+		invoke _strcpy, eax, [ebx].string.str_ptr
+		mov eax, [buf]
+		mov [ebx].string.str_ptr, eax
+		mov ecx, [tmp]
+		mov ebx, [ebx].string.str_ptr
+		add ebx, ecx
+	.else 
+		mov ebx, [pdst]
+		mov ebx, [ebx].string.str_ptr
+		add ebx, [tmp]
+	.endif
+
+	mov ecx, [psrc]
+	mov ecx, [ecx].string.str_ptr
+
+str_cat_cyc:
+	mov	dl, byte ptr[ecx]
+	mov byte ptr[ebx], dl
+	
+	cmp	byte ptr[ecx], 0
+	je str_cat_ret
+	
+	inc ecx
+	inc ebx
+	jmp	str_cat_cyc
+	
+str_cat_ret:
+	mov byte ptr[ebx], 0
+	mov eax, [pdst]
+	ret
+str_cat endp
+
+
+;int strcmp (const char *string1, const char *string2) 
+;сравнение строк, возвращает <0 string1<string2, =0 string1=string2, >0 string1>string2
+str_cmp proc c uses ebx ecx pstr1:ptr string, pstr2:ptr string
+	mov ebx, pstr1
+	mov ebx, [ebx].string.str_ptr
+	mov ecx, pstr2
+	mov ecx, [ecx].string.str_ptr
+	
+str_cmp_cyc:    
+	mov dl, byte ptr [ebx]
+	mov dh, byte ptr [ecx]
+	
+	cmp dl, 0
+	je str_cmp_equal
+	
+	inc ebx
+	inc ecx
+	
+	cmp dl, dh
+	je str_cmp_cyc 
+	jl str_cmp_greater
+	jg str_cmp_less
+	
+str_cmp_greater:
+	mov eax, -1
+	jmp str_cmp_ret
+	
+str_cmp_equal:
+	cmp dh, 0
+    jne str_cmp_greater
+	mov eax, 0
+	jmp str_cmp_ret
+	
+str_cmp_less:
+	mov eax, 1
+	
+str_cmp_ret:
+    ret
+str_cmp endp
+
+
+;char * strchr (const char *str, int c) 
+;поиск первого вхождения символа с в строку str, возвращает указатель на символ, если не найден 0
+str_chr proc c uses ebx ecx pstr:ptr string, symbol:dword
+    mov ebx, pstr
+	mov ebx, [ebx].string.str_ptr
+	mov al, byte ptr[symbol]
+	mov ecx, 0
+	
+	.while 1
+		mov dl, byte ptr [ebx]
+	
+		.if dl == al
+			 mov eax, ebx
+			 ret
+		.endif
+	
+		inc ebx	
+		.break .if dl == 0
+	.endw
+	
+str_chr_no:
+	mov eax, 0
+    ret
+str_chr endp
+
+
+;char * strnlen (char *str, int maxlen)
+;возвращает длину строки, если длина строки меньше maxlen, или maxlen, 
+;если в строке str среди первых символов до maxlen не встретится символ '\0' 
+str_n_len proc c uses ebx ecx pstr:ptr string, maxlen:dword
+	mov ebx, [pstr]
+	mov ebx, [ebx].string.str_ptr
+	mov ecx, [maxlen]
+str_n_len_cycle:   
+    cmp ecx, 0
+    je str_n_len_ret
+
+	cmp byte ptr [ebx], 0
+    je str_n_len_ret
+
+	dec ecx
+	inc ebx
+	
+    jmp str_n_len_cycle
+    
+str_n_len_ret:
+	sub ecx, [maxlen]
+	neg ecx
+	mov eax, ecx
+	ret
+str_n_len endp
+
+
+;;char * strncpy (char *dst, const char *src`, int maxlen) 
+;;копирует maxlen элементов из src в строку dest, возвращает указатель на dest
+;;если maxlen > длины строки, заполняет разницу 0 ?
+str_n_cpy proc c uses ebx ecx pdst:ptr string, psrc:ptr string, maxlen:dword
+	local tmp:dword
+	local buf:dword
+
+	mov ebx, [pdst]
+	invoke str_len, [psrc]
+	mov [tmp], eax
+	invoke str_len, [pdst]
+
+	.if [maxlen] > eax
+		mov ecx, [maxlen]
+		mov ebx, [pdst]
+		mov [ebx].string.str_length, ecx
+		invoke malloc, [maxlen]
+		mov [buf], eax
+		mov ebx, [pdst]
+		mov ecx, [psrc]
+		invoke _strcpy, eax, [ecx].string.str_ptr
+		mov eax, [buf]
+		mov [ebx].string.str_ptr, eax
+		mov ecx, [tmp]
+		mov ebx, [ebx].string.str_ptr
+		add ebx, ecx
+		sub [maxlen], ecx
+		.while [maxlen] != 1
+			mov byte ptr[ebx], 0
+
+			inc ebx
+			dec [maxlen]
+		.endw
+		jmp str_n_cpy_ret
+	.endif
+
+	mov ecx, [psrc]
+	mov ebx, [pdst]
+	mov ecx, [ecx].string.str_ptr
+	mov ebx, [ebx].string.str_ptr
+	
+str_n_cpy_cyc:    
+	mov	dl, byte ptr[ecx]
+	mov byte ptr[ebx], dl
+	
+	cmp	[maxlen], 1
+	jz str_n_cpy_ret
+	
+	inc ecx
+	inc ebx
+	dec [maxlen]
+	jmp	str_n_cpy_cyc
+	
+str_n_cpy_ret:
+	mov eax, [pdst]
+	ret
+str_n_cpy endp
+
+
+;;char * strncat (char *dst, const char *src, int maxlen) 
+;;конкатенирует maxlen символов из src, возвращает указатель на dest
+str_n_cat proc c uses ebx ecx pdst:ptr string, psrc:ptr string, maxlen:dword
+	local buf:dword
+	local tmp:dword
+
+	mov ebx, [pdst]
+	mov ebx, [ebx].string.str_length
+
+	invoke str_len, [pdst]
+	mov ecx, eax
+	mov [tmp], ecx
+	add eax, [maxlen]
+
+	.if eax > ebx
+		mov ebx, [pdst]
+		mov [ebx].string.str_length, eax
+		invoke malloc, eax
+		mov [buf], eax
+		mov ebx, [pdst]
+		invoke _strcpy, eax, [ebx].string.str_ptr
+		mov eax, [buf]
+		mov [ebx].string.str_ptr, eax
+		mov ecx, [tmp]
+		mov ebx, [ebx].string.str_ptr
+		add ebx, ecx
+	.else 
+		mov ebx, [pdst]
+		mov ebx, [ebx].string.str_ptr
+		add ebx, [tmp]
+	.endif
+
+	mov ecx, [psrc]
+	mov ecx, [ecx].string.str_ptr
+
+str_n_cat_cyc:
+	mov	dl, byte ptr[ecx]
+	mov byte ptr[ebx], dl
+	
+	cmp	[maxlen], 0
+	je str_n_cat_ret
+	
+	dec [maxlen]
+	inc ecx
+	inc ebx
+	jmp	str_n_cat_cyc
+	
+str_n_cat_ret:
+	mov byte ptr[ebx], 0
+	mov eax, [pdst]
+
+	ret
+str_n_cat endp
+
+
+;char * strncmp (char *str1, const char *str2, int maxlen)
+;
+str_n_cmp proc c uses ebx ecx pstr1:ptr string, pstr2:ptr string, maxlen:dword
+	mov ebx, pstr1
+	mov ebx, [ebx].string.str_ptr
+	mov ecx, pstr2
+	mov ecx, [ecx].string.str_ptr
+	
+	mov dl, byte ptr [ebx]
+
+	.while 1
+		mov dl, byte ptr [ebx]
+		mov dh, byte ptr [ecx]
+	
+		.break .if dl == 0
+		.break .if [maxlen] == 0
+	
+		inc ebx
+		inc ecx
+		dec [maxlen]
+	
+		.if dl < dh
+			mov eax, -1
+			ret
+		.elseif dl > dh
+			mov eax, 1
+			ret
+		.endif
+
+	.endw
+	
+	.if dh == 0
+		mov eax, -1
+	.else
+		mov eax, 0
+	.endif
+	
+    ret
+str_n_cmp endp
+;/////////////////////////////////////////////////////////////////////////////////

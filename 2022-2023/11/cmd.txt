@@ -1,0 +1,129 @@
+передача вещественных чисел
+fld mem		st(0) = mem (dd, dq, dt)
+fst mem		mem = st(0)
+fstp mem	mem = st(0), pop (top = (top + 1) mod 8)
+fstp st(i)	pop st(i)
+
+
+передача целых чисел
+fild mem
+fist mem
+fistp mem
+
+
+передача данных в десятичном формате
+fbld mem
+fbstp mem
+
+
+загрузка констант
+fldz	st(0) = 0
+fld1	st(0) = 1
+fldpi	st(0) = пи
+fldl2t	st(0) = двоичный логарифм 10
+fldl2e	st(0) = двоичный логарифм e
+fldlg2	st(0) = десятичный логарифм 2
+fldln2	st(0) = натуральный логарифм 2
+
+
+сравнение
+fcom		st(0) ? st(1)
+fcom st(i)  st(0) ? st(i)
+fcom mem 	st(0) ? mem
+fcomp		st(0) ? st(1)
+fcomp st(i) st(0) ? st(i)
+fcomp mem	st(0) ? mem
+fcompp		st(0) ? st(1)
+ficom mem	st(0) ? mem
+ficomp mem	st(0) ? mem
+ftst		st(0) ? 0
+
+fucom st(i)
+fucomp st(i)
+fucompp st(i)
+
+флаги С3,С2,С0
+st(0) > операнда	000
+st(0) < операнда	001
+st(0) == операнду	100
+операнды неупорядочены	111
+
+fstsw ax	sw -> ax
+fstsw mem	sw -> mem
+sahf		ah -> flags: C0->CF, C2->PF, C3->ZF
+
+
+целочисленные арифметические команды
+fiadd mem	st(0) += mem
+fisub mem	st(0) -= mem
+fimul mem	st(0) *= mem
+fidiv mem	st(0) /= mem
+fisubr mem	st(0) = mem - st(0)
+fidivr mem	st(0) = mem / st(0)
+
+
+вещественные арифметические команды
+fadd		st(0) += st(1)
+fadd mem	st(0) += mem
+fadd st(i),st	st(i) += st(0)
+fadd st,st(i)	st(0) += st(i)
+faddp st(i),st	st(i) += st(0),pop
+
+fsub		st(0) -= st(1)
+fsub mem	st(0) -= mem
+fsub st(i),st	st(i) -= st(0)
+fsub st,st(i)	st(0) -= st(i)
+fsubp st(i),st	st(i) -= st(0),pop
+fsubr mem	st(0) = mem - st(0)
+fsubr st(i),st	st(i) = st(0) - st(i)
+fsubrp st(i),st	st(i) = st(0) - st(i)
+
+fmul		st(0) *= st(1)
+fmul st,st(i)	st(0) *= st(i)
+fmul st(i),st	st(i) *= st(0)
+
+fdiv st,st(i)	st(0) /= st(i)
+fdiv st(i),st	st(i) /= st(0)
+fdivr st,st(i)	st(0) = st(i) / st(0)
+fdivr st(i),st	st(i) = st(0) / st(i)
+fdivp st(i),st	st(i) /= st(0), pop
+fdivrp st(i),st	st(i) = st(0) / st(i), pop
+
+
+дополнительные арифметические команды
+fsqrt 		st(0) = sqrt (st(0))
+fabs		st(0) = |st(0)|
+fchs		st(0) *= -1
+
+fxtract		st(0) = мантисса st(0), st(1) = порядок st(0)
+fscale		st(0) = st(0) * 2^st(1) -> x = x * 2^y, st(1) - целое
+
+frndint		st(0) = округленное значение st(0) до целого
+
+
+
+тригонометрические функции
+fcos		st(0) = cos(st(0))
+fsin		st(0) = sin(st(0))
+fsincos		st(0) = sin(st(0)), st(1) = cos(st(0))
+fptan		st(0) = tan(st(0)), st(1) = 1
+fpatan		st(1) = arctan(st(1) / st(0)), pop
+
+fprem		st(0) = частичный остаток st(0) / st(1)
+fprem1
+
+f2xm1		-1 < st(0) < 1, st(0) = 2^st(0) - 1
+fyl2x		st(1) = st(1)*log2(st(0)), pop
+
+
+
+команды управления
+fstsw ax/mem16	ax/mem16 = sw
+fldsw ax/mem16  sw = ax/mem16
+
+fstcw mem16	mem16 = cw
+fldcw mem16	cw = mem16
+
+fincstp     top++
+fdecstp     top--
+ffree st(i) освобождение st(i)

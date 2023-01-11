@@ -1,0 +1,55 @@
+item struct
+    key_ptr     dd ?
+    value_ptr   dd ?
+	next_ptr	dd ?
+item ends
+
+hash_table struct
+	items_ptr	dd ?
+    _size_		dd ?
+    count		dd ?
+hash_table ends
+
+key11 db "rgijfekpofkkop",0
+key22 db "rgipofkjfekkop",0
+key33 db "rgikopjfekpofk",0
+key44 db "fekrgijpofkkop",0
+key55 db "kkrgiekjfpofop",0
+value11 db "value11",0
+value22 db "value22",0
+value33 db "value33",0
+value44 db "value44",0
+value55 db "value55",0
+
+&tbl(0x0018FF34) = 0049d940 0018ff80 00401774
+0x0049D940 - реальный адрес
+
+;;tbl 0050daf0
+0050daf0 = 0050bc08 00000096 00000000 //start
+		   0050bc08 00000096 000000001 //after insert 1
+0x0050BC08  00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00504a10 00000000
+
+0050bc08 00000096 00000002 //after insert 2
+0x0050BC08  00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00504a10 05980000  
+0x0050BC3C  00000050 00000000
+
+0050bc08 00000096 00000003 //after insert 2
+0x0050BC08  00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000 4ae00000 00000050 00504a10 05980000  
+0x0050BC3C  00000050 00000000
+
+
+///print
+mov [i], 0
+	mov ebx, [tbl]
+	mov ebx, [ebx]
+	.while [i] != 150
+		mov ecx, [ebx]
+		.if ecx != 0
+			mov ecx, [ecx].item.value_ptr
+			invoke printf, offset format_s, ecx
+		.endif
+		inc [i]
+		add ebx, 2
+	.endw
+	mov eax, 0
+	ret

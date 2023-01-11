@@ -1,0 +1,24 @@
+Задание.
+
+1. Реализовать на языке ассемблера стандартные функции работы со строками (без использования строковых инструкций):
+char * strstr (const char *str, const char *strSearch);
+char * strcpy (char *dst, const char *src);
+unsigned int strlen (const char *str);
+char * strcat (char *dst, const char *src);
+int strcmp (const char *string1, const char *string2);
+char * strchr (const char *str, int c);
+
+Передачу аргументов, доступ к аргументам, доступ к локальным переменным необходимо организовать самостоятельно через обращения к стековой памяти через регистры ebp/esp. Т.е. нельзя пользоваться директивами ассемблера proc, invoke, local и др.
+
+Функции должны придерживаться соглашения cdecl.
+Для тестирования написать программу, вызывающую функции с аргументами из командной строки.
+
+2 балла.
+
+
+2. Для эмулятора реализовать на языке ассемблера стандартные функции работы со строками (без использования строковых инструкций):
+unsigned int strlen (const char *str);
+char * strstr (const char *str, const char *strSearch);
+char * strcpy (char *dst, const char *src);
+Для этого может понадобиться реализовать дополнительные инструкции (например, cmp, je, jne).
+По баллу за каждую функцию.

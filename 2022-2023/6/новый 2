@@ -1,0 +1,267 @@
+;
+; Модуль main.asm.
+;
+; Пример обращения к аргументам функции main.
+;
+; Маткин Илья Александрович 18.09.2013
+;
+
+.686
+.model flat, stdcall
+option casemap:none
+
+include c:\masm32\include\msvcrt.inc
+include c:\masm32\include\kernel32.inc
+include c:\masm32\include\user32.inc
+
+include Strings.mac
+include functions.inc
+
+.data
+
+
+.data?
+
+.const
+
+.code
+
+printf proto c :dword, :vararg
+malloc proto c :dword
+rand proto c 
+
+PrintStringArray proc c array:dword
+	local i:dword
+	mov [i], 0
+	.while 1
+        mov ecx, [i]
+        mov ebx, [array]
+        
+        invoke printf, offset format, dword ptr[ecx + ebx]
+		add [i], 4
+        
+        mov ecx, [i]
+        mov ebx, [array]
+        .break .if !dword ptr [ecx + ebx]
+    .endw
+	ret
+PrintStringArray endp
+
+ArrayCpy proc c dest:dword, src:dword, count:dword
+	local i:dword
+	mov [i], 0
+ArrayCpy_cyc:    
+	mov ecx, [i]
+	mov ebx, [src]
+	mov eax, [dest]
+
+	mov	edx, dword ptr[ebx+ecx]
+	xchg dword ptr[eax+ecx], edx
+	
+	cmp	[count], 0
+	je ArrayCpy_ret
+	
+	add [i], 4
+	dec count
+	jmp	ArrayCpy_cyc
+	
+ArrayCpy_ret:
+	mov eax, [dest]
+	ret
+ArrayCpy endp
+
+;Реализовать функцию слияния двух отсортированных массивов указателей 
+;на строки в новый отсортированный массив. Реализовать генерацию случайных 
+;массивов указателей на строки. Воспользоваться функцией сортировки массива 
+;указателей на строки из предыдущего задания.
+ArrayCat proc c first:dword, second:dword
+	local i:dword 
+	local count:dword
+	local size_:dword
+	local res:dword
+	local offset_:dword
+
+	;mov [i], 0
+	;mov [count], 0
+
+    ;.while 1
+    ;    mov ecx, [i]
+    ;    mov ebx, [first]
+;		inc count
+;        add [i], 4
+		;mov ecx, [i]
+        ;mov ebx, [first]
+        ;.break .if !dword ptr [ecx + ebx]
+    ;.endw
+
+	mov [size_], 100
+
+	invoke malloc, [size_]
+	test eax, eax
+	jz ArrayCat_ret
+	mov [res], eax
+
+	invoke ArrayCpy, [res], [first], 10
+	
+	mov eax, 10
+	mov ecx, 4
+	mul ecx
+	mov [offset_], eax
+	mov [count], 10
+
+	ArrayCat_cyc:
+	mov ebx, [res]
+	mov ecx, [second]
+	mov eax, [i]
+	mov edx, dword ptr[ecx+eax]
+	mov eax, [offset_]
+	mov dword ptr[ebx+eax], edx
+	
+	cmp [count], 0
+	je ArrayCat_ret
+	
+	add [i], 4
+	add [offset_], 4
+	dec count
+	jmp ArrayCat_cyc
+
+	ArrayCat_ret:
+	mov eax, [res]
+    ret
+ArrayCat endp
+
+main proc c argc:DWORD, argv:DWORD, envp:DWORD
+    local buf1:dword
+	local buf2:dword
+	local buffer:dword
+
+	local i:dword
+	local num:dword
+
+	invoke malloc, 40
+	test eax, eax
+	jz main_ret
+	mov [buf1], eax
+
+	invoke GenStrings, [buf1], 10
+	invoke SortStrings, [buf1], 10
+
+	invoke malloc, 40
+	test eax, eax
+	jz main_ret
+	mov [buf2], eax
+
+	invoke GenStrings, [buf2], 10
+	invoke SortStrings, [buf2], 10
+
+	;;arraycat
+	invoke ArrayCat, [buf1], [buf2]
+	mov [buffer], eax
+
+	invoke PrintStringArray, [buffer]
+	invoke printf, offset format, offset string  
+	invoke SortStrings, [buffer], 20
+
+	;;print
+	invoke PrintStringArray, [buffer]
+
+main_ret:
+	mov eax, 0
+	ret
+
+main endp
+
+
+end
+
+
+
+////_strcmp proc
+	push ebp
+    mov ebp, esp
+	sub esp, 8
+	
+	mov ebx, [ebp+8]
+	mov [ebp-4], ebx
+	mov ecx, [ebp+12]
+	mov [ebp-8], ecx
+	
+strcmp_cyc:    
+	mov dl, byte ptr [ebx]
+	mov dh, byte ptr [ecx]
+	
+	cmp dl, 0
+	je equal
+	
+	add dword ptr[ebp-4], 1
+	mov ebx, [ebp-4]
+	add dword ptr[ebp-8], 1
+	mov ecx, [ebp-8]
+	
+	cmp dl, dh
+	je strcmp_cyc 
+	jl string1_string2
+	jg string2_string1
+	
+string1_string2:
+	mov eax, -1
+	jmp strcmp_ret
+	
+equal:
+	cmp dh, 0
+    jne string1_string2
+	mov eax, 0
+	jmp strcmp_ret
+	
+string2_string1:
+	mov eax, 1
+    jmp strcmp_ret
+	
+strcmp_ret:
+	mov esp, ebp
+    pop ebp	
+    ret
+	
+	
+	/////
+	SortStrings proc c arg:DWORD, count:dword
+	local i:dword
+	local j:dword
+	mov [i], 0
+	mov [j], 0
+	
+	_loop1:
+		_loop2:
+		mov ecx, [i]
+		mov eax, [arg]
+		push dword ptr [eax + ecx + 4]
+		push dword ptr [eax + ecx]
+		call _strcmp
+		add esp, 8
+
+		cmp eax, 1
+		jz replace
+		jmp next
+
+		replace:
+		mov ecx, [i]
+		mov eax, [arg]
+		mov ebx, dword ptr[eax+ecx+4]
+		xchg dword ptr[eax+ecx], ebx
+		mov dword ptr[eax+ecx+4], ebx
+
+		next:
+		add [i], 4
+		inc [j]
+		cmp [j], 9
+		jne _loop2
+	
+	mov [i], 0
+	mov [j], 0
+	dec count
+	cmp count, 0
+	jg _loop1
+
+	ret
+
+SortStrings endp

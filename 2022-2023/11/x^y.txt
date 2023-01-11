@@ -1,0 +1,7 @@
+fscale		st(0) = st(0) * 2^st(1) -> x = x * 2^y, st(1) - целое
+
+f2xm1		-1 < st(0) < 1, st(0) = 2^st(0) - 1
+fyl2x		st(1) = st(1)*log2(st(0)), pop
+
+
+x^y ->  2 ^ (y*log2(x)) -> 2 ^ ([y*log2(x)] + {y*log2(x)}) -> 2^[y*log2(x)] * ((2^{y*log2(x)} - 1) + 1)

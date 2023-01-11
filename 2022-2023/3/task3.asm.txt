@@ -1,0 +1,348 @@
+;include \masm32\include\masm32rt.inc
+
+.686
+.model flat, c
+
+.data
+format db "%s",13,10,0
+format_eax db "%d", 0Dh, 0Ah, 0
+
+.code
+
+;printf proto c :dword,:dword,:dword
+printf proto c :dword, :vararg
+
+; int strlen(const char *str)
+; находит длинну строки (до завершающего нуля), адрес которой является аргументом
+_strlen:
+    push ebp
+    mov ebp, esp
+    sub esp, 8
+	
+    mov eax, [ebp + 8]
+	mov [ebp-4], eax
+    mov dword ptr[ebp-8], 0 ; счётчик ax 
+
+strlen_cycle:   
+    cmp byte ptr [eax], 0
+    je strlen_ret
+    add dword ptr[ebp-8], 1
+    add dword ptr[ebp-4], 1
+	mov eax, [ebp-4]
+    jmp strlen_cycle
+    
+strlen_ret:   
+    mov eax, [ebp-8]
+    mov esp, ebp
+    pop ebp
+	retn 4
+
+;char * strstr (const char *str, const char *strSearch);
+;поиск первого вхождение строки strSearch в строке str, возвращает 0 если нет вхождений, 
+;иначе указатель на первое вхождение, если strSearch нулевой длины, то возвращ указ на начало строки str
+_strstr:
+    push ebp
+    mov ebp, esp
+	sub esp, 16
+
+    push [ebp+8]
+    call _strlen
+    cmp eax, 0
+    jz strstr_null_str
+
+	mov eax, [ebp+8]
+    mov [ebp-4], eax
+	mov ecx, [ebp+12]
+    mov [ebp-8], ecx
+
+    mov dword ptr[ebp-16], 0
+    
+strstr_start: 
+    mov dl, byte ptr[eax]
+    mov bl, byte ptr[ecx]
+
+    cmp dl, 0
+    je strstr_end1
+
+    cmp bl, 0
+    je ststr_found
+
+    cmp dl, bl
+    je strstr_count
+
+    add dword ptr[ebp-4], 1
+	mov eax, [ebp-4]
+
+    jmp strstr_start
+
+strstr_count:
+    add dword ptr[ebp-4], 1
+	mov eax, [ebp-4]
+	add dword ptr[ebp-8], 1
+	mov ecx, [ebp-8]
+    add dword ptr[ebp-16], 1
+    jmp strstr_start
+
+strstr_end1:
+    cmp bl, 0
+    je ststr_found
+    jmp strstr_no
+
+ststr_found:
+	mov eax, [ebp-4]
+    sub eax, dword ptr[ebp-16]
+    jmp strstr_ret
+
+strstr_null_str:
+    mov eax, [ebp+8]
+    jz strstr_ret
+
+strstr_no:
+    mov eax, 0
+	
+strstr_ret:
+    mov esp, ebp
+    pop ebp
+	retn 8
+
+;char * strchr (const char *str, int c) 
+;поиск первого вхождения символа с в строку str, возвращает указатель на символ, если не найден 0
+_strchr:
+    push ebp
+    mov ebp, esp
+    sub esp, 8
+
+    mov ebx, [ebp+8]
+	mov [ebp-4], ebx
+	mov al, byte ptr[ebp+12]
+	invoke printf, [ebp+12]
+	
+	mov dword ptr[ebp-8], 0
+	
+strchr_cyc:
+	mov dl, byte ptr [ebx]
+	
+	cmp dl, al
+	je strchr_ret
+	
+	add dword ptr[ebp-4], 1
+	mov ebx, [ebp-4]
+	add dword ptr[ebp-8], 1
+	
+    cmp dl, 0
+	je strchr_no
+	
+	jmp strchr_cyc
+	
+strchr_no:
+	mov dword ptr[ebp-8], 0
+	jmp strchr_ret
+	
+strchr_ret:
+	mov eax, [ebp-8]
+    mov esp, ebp
+    pop ebp
+    retn 8
+
+;int strcmp (const char *string1, const char *string2) 
+;сравнение строк, возвращает <0 string1<string2, =0 string1=string2, >0 string1>string2
+_strcmp:
+	push ebp
+    mov ebp, esp
+	sub esp, 8
+	
+	mov ebx, [ebp+8]
+	mov [ebp-4], ebx
+	mov ecx, [ebp+12]
+	mov [ebp-8], ecx
+	
+strcmp_cyc:    
+	mov dl, byte ptr [ebx]
+	mov dh, byte ptr [ecx]
+	
+	cmp dl, 0
+	je equal
+	
+	add dword ptr[ebp-4], 1
+	mov ebx, [ebp-4]
+	add dword ptr[ebp-8], 1
+	mov ecx, [ebp-8]
+	
+	cmp dl, dh
+	je strcmp_cyc 
+	jl string1_string2
+	jg string2_string1
+	
+string1_string2:
+	mov eax, -1
+	jmp strcmp_ret
+	
+equal:
+	cmp dh, 0
+    jne string1_string2
+	mov eax, 0
+	jmp strcmp_ret
+	
+string2_string1:
+	mov eax, 1
+    jmp strcmp_ret
+	
+strcmp_ret:
+	mov esp, ebp
+    pop ebp	
+    retn 8
+
+;char * strcat (char *dst, const char *src) 
+;конкатенация, \0, возвращает указатель на dest
+_strcat:
+    push ebp
+    mov ebp, esp
+	sub esp, 8
+	
+	mov ebx, [ebp+8]
+	mov [ebp-4], ebx
+	mov ecx, [ebp+12]
+	mov [ebp-8], ecx
+		
+strcat_cyc:  
+	mov dl, byte ptr [ebx]
+	
+	cmp dl, 0
+	je strcat_move
+	
+	add dword ptr[ebp-4], 1
+	mov ebx, [ebp-4]
+	jmp strcat_cyc
+	
+strcat_move:
+	mov al, byte ptr[ecx]
+	mov byte ptr[ebx], al
+	
+	cmp byte ptr[ecx], 0
+	je strcat_ret
+	
+	add dword ptr[ebp-8], 1
+	mov ecx, [ebp-8]
+	add dword ptr[ebp-4], 1
+	mov ebx, [ebp-4]
+	jmp strcat_move
+
+strcat_ret:
+	mov eax, [ebp+8]
+    mov esp, ebp
+    pop ebp
+    retn 8
+
+;char * strcpy (char *dst, const char *src) 
+;копирует строку src в строку dest, копирование вместе с \0, возвращает указатель на dest 
+_strcpy:
+    push ebp
+    mov ebp, esp
+	sub esp, 8;10h
+	
+	mov ebx, [ebp+8]
+	mov [ebp-4], ebx
+	mov ecx, [ebp+12]
+	mov [ebp-8], ecx
+	
+	;mov dword ptr[ebp-10h], 0
+	
+strcpy_cyc:    
+	mov	dl, byte ptr[ecx]
+	mov byte ptr[ebx], dl
+	
+	cmp	byte ptr[ecx], 0
+	je strcpy_ret
+	
+	add dword ptr[ebp-4], 1
+	mov ebx, [ebp-4]
+	add dword ptr[ebp-8], 1
+	mov ecx, [ebp-8]
+	jmp	strcpy_cyc
+	
+strcpy_ret:
+	mov eax, [ebp+8]
+    mov esp, ebp
+    pop ebp
+    retn 8
+
+main proc
+	push ebp
+    mov ebp, esp
+    sub esp, 10h
+
+	mov eax, [ebp+12]
+	mov dword ptr [ebp-4], eax
+	add dword ptr[ebp-4], 4
+	
+	mov eax, [ebp+12]
+	mov dword ptr[ebp-8], eax
+	add dword ptr[ebp-8], 8
+	
+	
+	; _strlen_:
+	; mov eax, dword ptr[ebp-4]
+    ; push dword ptr [eax]
+    ; call _strlen
+	; push eax
+	; push offset format_eax
+	; call printf
+	; add esp,8
+
+	; _strstr_:
+    ; mov eax, dword ptr[ebp-8]
+    ; push dword ptr [eax]
+	; mov eax, dword ptr[ebp-4]
+    ; push dword ptr [eax]
+    ; call _strstr
+	; invoke printf, eax
+
+	_strchr_:
+	mov eax, dword ptr[ebp-8]
+	mov ecx, dword ptr[eax]
+	push 97
+	mov eax, dword ptr[ebp-4]
+	mov ecx, dword ptr[eax]
+	push ecx
+    call _strchr
+	push eax
+	push offset format_eax
+	call printf
+	add esp,8
+	;invoke printf, eax
+	
+	_strcmp_:
+    ; mov eax, dword ptr[ebp-8]
+    ; push dword ptr [eax]
+	; mov eax, dword ptr[ebp-4]
+    ; push dword ptr [eax]
+    ; call _strcmp
+	; push eax
+	; push offset format_eax
+	; call printf
+	; add esp,8
+	
+	_strcat_:
+    ; mov eax, dword ptr[ebp-8]
+    ; push dword ptr [eax]
+	; mov eax, dword ptr[ebp-4]
+    ; push dword ptr [eax]
+    ; call _strcat
+    ; invoke printf, eax
+	
+	_strcpy_:
+	; mov eax, dword ptr[ebp-8]
+    ; push dword ptr [eax]
+	; mov eax, dword ptr[ebp-4]
+    ; push dword ptr [eax]
+    ; call _strcpy
+    ; invoke printf, eax
+	
+_ret:
+	mov esp, ebp
+    pop ebp
+	ret
+
+main endp
+
+end

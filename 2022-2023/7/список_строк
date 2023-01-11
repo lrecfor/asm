@@ -1,0 +1,268 @@
+С использованием одного разименования для указателя [plst]
+
+gen_str_list:
+
+plst = 0018ff30 00000005 - count
+0018ff30 -> 00000000 00000000
+
+push_node:
+
+plst:
+plst = 0018ff28 0045daa8 - string
+0018ff28 -> 0018ff30 00000005 - count
+0018ff30 -> 00000000 00000000
+
+mov ecx, [plst] -> ecx = 0018FF28
+mov ecx, [ecx]	-> 0018ff30
+mov [pnd].str_list.next_ptr, ecx
+
+pnd:
+pnd = 0061b020 0018ff30
+0018ff30 -> 00000000 00000000
+
+mov ebx, [pnd].str_list.str_ptr -> ebx = 0061B020
+
+mov [plst].str_list.str_ptr, ebx
+(0x0018FF14)plst = 0061b020 0045daa8 - string
+0061b020 - string
+
+mov ebx, [pnd].str_list.next_ptr -> ebx = 0018FF30
+
+mov [plst].str_list.next_ptr, ebx
+(0x0018FF14)plst = 0061b020 0018ff30
+0061b020 - string
+0018ff30 -> 00000000 00000000
+
+gen_str_list:
+
+plst = 0018ff30 00000005 - count
+0018ff30 -> 00000000 00000000
+
+
+С использованием двойного разименования для указателя [plst]
+
+gen_str_list:
+
+plst = 0018ff30 00000005 - count
+0018ff30 -> 00000000 00000000
+
+push_node:
+
+plst:
+(0x0018FF14)plst = 0018ff28 005cda90 - string
+0018ff28 -> 0018ff30 00000005 - count
+0018ff30 -> 00000000 00000000
+
+mov ecx, [plst] -> ecx = 0018FF28
+mov ecx, [ecx]	-> 0018ff30
+mov [pnd].str_list.next_ptr, ecx
+
+pnd:
+pnd = 0061b020 0018ff30
+0018ff30 -> 00000000 00000000
+
+mov ecx, [plst] -> ecx = 0018FF28
+0018FF28 -> 0018ff30 00000005
+
+НЕДОСТАТОЧНО - записывает в !0018ff30! 00000005
+
+С использованием тройного разименования для указателя [plst]
+
+gen_str_list:
+
+plst = 0018ff30 00000005 - count
+0018ff30 -> 00000000 00000000
+
+push_node:
+
+plst:
+(0x0018FF14)plst = 0018ff28 005cda90 - string
+0018ff28 -> 0018ff30 00000005 - count
+0018ff30 -> 00000000 00000000
+
+mov ecx, [plst] -> ecx = 0018FF28
+mov ecx, [ecx]	-> 0018ff30
+mov [pnd].str_list.next_ptr, ecx
+
+pnd:
+pnd = 0061b020 0018ff30
+0018ff30 -> 00000000 00000000
+
+mov ecx, [plst] -> ecx = 0018FF28
+0018FF28 -> 0018ff30 (00000005)
+mov ecx, [ecx] -> ecx = 0018FF30
+0018ff30 -> 00000000 00000000
+
+mov ebx, [pnd].str_list.str_ptr -> ebx = 0061B020
+
+mov [plst].str_list.str_ptr, ebx
+(0x0018FF14)plst = 0018ff28 0043da48 - string
+0018ff28 -> 0018ff30 (00000005)
+0018ff30 -> 0061b020 00000000
+
+mov ebx, [pnd].str_list.next_ptr -> ebx = 0018FF30
+
+mov [plst].str_list.next_ptr, ebx
+(0x0018FF14)plst = 0018ff28 0043da48
+0018ff28 -> 0018ff30 (00000005)
+0018ff30 -> 0060f020 0018ff30
+0060f020 -> string
+0018ff30 -> 0060f020 0018ff30
+
+gen_str_list:
+
+plst = 0018ff30 (00000005 - count)
+0018ff30 -> 0060f020 0018ff30
+0018ff30 -> 0060f020 0018ff30
+
+
+/////
+local buf:dword
+	local pnd:str_list
+
+	invoke malloc, eax
+
+	invoke _strcpy, eax, [pchar]
+	mov [pnd].str_list.str_ptr, eax
+
+	mov ecx, [plst]
+	mov ecx, [ecx]
+	mov [pnd].str_list.next_ptr, ecx
+
+	mov ecx, [plst]
+	mov ecx, [ecx]
+	mov ebx, [pnd].str_list.str_ptr
+	mov [ecx].str_list.str_ptr, ebx
+	mov ebx, [pnd].str_list.next_ptr
+	mov [ecx].str_list.next_ptr, ebx
+/////
+
+после добавления 1 узла в функции генерации:
+&plst(0x0018FF28) = 0018ff04 00000003
+00000003 - count
+0018ff04 - ptr
+0018ff04 = 00734020 0018ff30
+00734020 -> %%!;!+W";D - вторая добавленная строка
+0018ff30 - указатель на предыдущий узел
+0018ff30 = 0063daa8 00000000
+0063daa8 -> IOBH=$226L - первая добавленная строка
+00000000 -> указатель на конец списка (nullptr)
+
+добавление втрого узла, начало функции push_node:
+&plst(0x0018FF14) = 0018ff28 0063da18
+0063da18 -> S8"AT65XFC - третья добавляемая строка
+0018ff28 -> 0018ff04 00000003
+0018ff04 = 00000000 47794c00 - указатели на мусор
+кто то портит указатель (0x0018FF04) в промежуток между выходом и следущим входом в функцию пуша узла - генерация строки и портит
+
+теперь не портит
+
+после добавления 3х узлов:
+&plst(0x0018FF28) = 0018ff00 00000003
+0018ff00 -> 00929020 0018ff00
+зациклился опять
+
+попробуем добавлять константные строки
+
+1) после 1 прогона
+   0x0018FF28 = 0018ff00 00000003
+   0018ff00 = 00591020 0018ff30
+   00591020 -> "TTTTTTTTTT"
+   0018ff30 = 0047db20 00000000
+   0047db20 -> "IOBH=$226L"
+   00000000 -> nullptr
+   
+2) после 2 прогона
+   0x0018FF28 = 0018ff00 00000003
+   0018ff00 = 00737020 0018ff00
+   00737020 -> TTTTTTTTTT
+   0018ff00 = 00737020 0018ff00
+   
+зациклился после второго прогона...
+
+перед 2 проходом
+&plst(0x0018FF10) = 0018ff28 00408035
+0018ff28 -> 0018ff00 00000003
+0018ff00 -> 00408035 0018ff30
+0018ff30 -> 0065db08 00000000
+
+&pnd(0x0018FF00) = 00408035 0018ff00
+
+последний шанс
+&head(0x0018FF30) = 00408035 004b9128
+0x0018FF30 = 00408035 004b9128
+004b9128 = 00408035 004b49a0
+004b49a0 = 00408035 0018ff30
+0x0018FF30 = 00408035 004b9128
+
+0x0018FF30 <-> 004b9128
+
+0x0018FF30 = 00408035 004b9128
+004b9128 = 00408035 004b49a0
+004b49a0 = 00408035 0
+
+&plst(0x0018FF28) = 00438fc8 00000000
+00438fc8 = 00408035 00439128
+00439128 = 00408035 004349a0
+004349a0 = 00408035 00000000
+
+нужно сделать: 0018FF30 = 00408035 00439128
+
+0043dad8 - lost?..
+
+
+//////
+push_node proc c uses ebx ecx plst:ptr str_list, pchar:ptr byte
+	local pnd:ptr str_list
+
+	invoke malloc, 4
+	mov [pnd], eax
+
+	mov eax, [pchar]
+	mov ebx, [pnd]
+	mov [ebx].str_list.str_ptr, eax
+
+	mov ecx, [plst]
+	mov ecx, [ecx]
+	mov [ebx].str_list.next_ptr, ecx
+
+	mov ebx, [pnd]
+	lea ebx, [ebx]
+	mov ecx, [plst]
+	mov [ecx], ebx
+
+	ret
+push_node endp
+//////
+
+
+FINALLY
+&head(0x0018FF30) = 0055daa8 005549a0
+0055daa8 -> IOBH=$226L
+005549a0 = 0055dac0 00559128
+0055dac0 -> %%!;!+W";D
+00559128 = 0055da90 00558fc8
+0055da90 -> S8"AT65XFC
+00558fc8 = 0055db50 00000000
+0055db50 -> O&+2)TO3WV
+
+after sorting should be:
+%%!;!+W";D
+IOBH=$226L
+O&+2)TO3WV
+S8"AT65XFC
+
+
+0018FF30 = 0060d438 006049a8
+006049a8 = 0060d408 00609140
+00609140 = 0060d3c0 00608f98
+00608f98 = 0060d3f0
+
+&head = 004ed390 004e49a8
+004ed390 = %%!;!+W";D
+004e49a8 = 004ed4e0 004e9140
+004ed4e0 = IOBH=$226L
+004e9140 = 004ed3a8 004e8f98
+004ed3a8 = O&+2)TO3WV
+004e8f98 = 004ed558 00000000
+004ed558 = S8"AT65XFC
